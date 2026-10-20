@@ -5,6 +5,7 @@ __pycache__/
 .manifest/
 .global_filter.json
 .ui_config.json
+.build_reports/
 .venv/
 build/
 dist/

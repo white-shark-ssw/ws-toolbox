@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.group/
+.manifest/
+.global_filter.json
+.ui_config.json
+.venv/
+build/
+dist/
+*.egg-info/
+_temp_build_*/
+local_test/
