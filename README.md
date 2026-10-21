@@ -14,3 +14,4 @@ ws 独立小工具集合。
 | 目录 | 项目 |
 | --- | --- |
 | [996-pack-tool/](996-pack-tool/README.md) | 996 版本打包工具 |
+| [ws-git-sync/](ws-git-sync/README.md) | ws 多版本 Git 同步工具 |

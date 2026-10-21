@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools==84.2.1"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ws-git-sync"
+version = "0.1.5"
+description = "ws 多版本 Git 单向同步桌面工具"
+requires-python = ">=3.12,<3.13"
+dependencies = ["PySide6==6.8.3"]
+
+[project.optional-dependencies]
+dev = ["pytest==8.4.2", "ruff==0.13.3", "pyinstaller==6.16.0"]
+
+[project.gui-scripts]
+ws-git-sync = "ws_git_sync.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+ws_git_sync = ["assets/*.ico"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 110
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

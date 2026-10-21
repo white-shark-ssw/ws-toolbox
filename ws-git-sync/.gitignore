@@ -1,0 +1,4 @@
+# Portable local configuration must not be committed or distributed.
+settings.json
+instance.lock
+.settings.json.*
