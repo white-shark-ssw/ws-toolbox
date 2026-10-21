@@ -1,0 +1,46 @@
+altgraph==0.17.5
+    # via
+    #   macholib
+    #   pyinstaller
+colorama==0.4.6 ; sys_platform == 'win32'
+    # via pytest
+iniconfig==2.3.1
+    # via pytest
+macholib==1.16.4 ; sys_platform == 'darwin'
+    # via pyinstaller
+packaging==26.3
+    # via
+    #   pyinstaller
+    #   pyinstaller-hooks-contrib
+    #   pytest
+pefile==2023.2.7 ; sys_platform == 'win32'
+    # via pyinstaller
+pluggy==1.7.0
+    # via pytest
+pygments==2.21.0
+    # via pytest
+pyinstaller==6.16.0
+    # via ws-git-sync
+pyinstaller-hooks-contrib==2026.9
+    # via pyinstaller
+pyside6==6.8.3
+    # via ws-git-sync
+pyside6-addons==6.8.3
+    # via pyside6
+pyside6-essentials==6.8.3
+    # via
+    #   pyside6
+    #   pyside6-addons
+pytest==8.4.2
+    # via ws-git-sync
+pywin32-ctypes==0.2.3 ; sys_platform == 'win32'
+    # via pyinstaller
+ruff==0.13.3
+    # via ws-git-sync
+setuptools==84.2.1
+    # via pyinstaller
+shiboken6==6.8.3
+    # via
+    #   pyside6
+    #   pyside6-addons
+    #   pyside6-essentials

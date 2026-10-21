@@ -1,0 +1,13 @@
+pyside6==6.8.3
+    # via ws-git-sync
+pyside6-addons==6.8.3
+    # via pyside6
+pyside6-essentials==6.8.3
+    # via
+    #   pyside6
+    #   pyside6-addons
+shiboken6==6.8.3
+    # via
+    #   pyside6
+    #   pyside6-addons
+    #   pyside6-essentials
