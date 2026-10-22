@@ -186,7 +186,12 @@ def run_task(request: TaskRequest, git: Git, emit: Callable[[TaskEvent], None]) 
                         if fingerprint(git.root / item.relative) != item.snapshot.digest:
                             raise SyncError("TARGET_CHANGED", "应用后的文件被外部修改", item.relative)
                         actual = git.text("rev-parse", ":" + item.relative)
-                        expected_blobs[item.relative] = git.clean_hash(item.relative, expected)
+                        # add会参考原索引保留已有CRLF；hash-object不会加载相同索引历史。
+                        # 索引若逐字节等于稳定源快照，直接认可原始Blob；否则必须匹配Git处理结果。
+                        raw = git.raw_hash(expected)
+                        expected_blobs[item.relative] = (
+                            raw if actual == raw else git.clean_hash(item.relative, expected)
+                        )
                         if item.relative in missing:
                             # Git可能按autocrlf/attributes归一化换行，使字节修改不产生索引差异。
                             # 仅在工作区仍为源快照、索引等于源经Git处理后的Blob且等于原HEAD时放行。

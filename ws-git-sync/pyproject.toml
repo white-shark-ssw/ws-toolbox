@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ws-git-sync"
-version = "0.1.6"
+version = "0.1.7"
 description = "ws 多版本 Git 单向同步桌面工具"
 requires-python = ">=3.12,<3.13"
 dependencies = ["PySide6==6.8.3"]

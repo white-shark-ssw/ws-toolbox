@@ -195,6 +195,10 @@ class Git:
     def clean_hash(self, path: str, content: bytes) -> str:
         return self.run("hash-object", "--path=" + path, "--stdin", data=content).stdout.decode().strip()
 
+    def raw_hash(self, content: bytes) -> str:
+        """按仓库对象格式计算原始快照Blob，不受换行、属性和索引历史影响。"""
+        return self.run("hash-object", "--no-filters", "--stdin", data=content).stdout.decode().strip()
+
     def push_existing(self, remote: str, branch: str) -> bool:
         """仅处理已有提交；分叉时 rebase，失败 abort，绝不强推。"""
         self.require_clean()
