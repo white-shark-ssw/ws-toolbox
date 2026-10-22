@@ -154,9 +154,24 @@ def run_task(request: TaskRequest, git: Git, emit: Callable[[TaskEvent], None]) 
                 if git.staged_paths():
                     raise SyncError("FOREIGN_INDEX", "外部程序修改暂存区，停止提交")
                 git.stage(paths)
-                if git.staged_paths() != set(paths):
-                    raise SyncError("STAGE_MISMATCH", "实际暂存范围与计划不一致，已保留现场")
+                staged = git.staged_paths()
+                missing = set(paths) - staged
+                extra = staged - set(paths)
+
+                def stage_mismatch():
+                    detail = []
+                    if missing:
+                        detail.append("计划内未暂存：\n" + "\n".join(sorted(missing)))
+                    if extra:
+                        detail.append("计划外暂存：\n" + "\n".join(sorted(extra)))
+                    return SyncError(
+                        "STAGE_MISMATCH", "实际暂存范围与计划不一致，已保留现场\n" + "\n".join(detail)
+                    )
+
+                if extra or any(item.kind != "modify" and item.relative in missing for item in plan.changes):
+                    raise stage_mismatch()
                 expected_blobs = {}
+                normalized = []
                 for item in plan.changes:
                     if item.kind == "delete":
                         if (
@@ -172,8 +187,24 @@ def run_task(request: TaskRequest, git: Git, emit: Callable[[TaskEvent], None]) 
                             raise SyncError("TARGET_CHANGED", "应用后的文件被外部修改", item.relative)
                         actual = git.text("rev-parse", ":" + item.relative)
                         expected_blobs[item.relative] = git.clean_hash(item.relative, expected)
+                        if item.relative in missing:
+                            # Git可能按autocrlf/attributes归一化换行，使字节修改不产生索引差异。
+                            # 仅在工作区仍为源快照、索引等于源经Git处理后的Blob且等于原HEAD时放行。
+                            if actual != expected_blobs[item.relative] or actual != git.text(
+                                "rev-parse", head + ":" + item.relative
+                            ):
+                                raise stage_mismatch()
+                            normalized.append(item.relative)
                         if actual != expected_blobs[item.relative]:
                             raise SyncError("STAGE_CONTENT", "暂存内容与稳定快照不一致", item.relative)
+                if normalized:
+                    event(
+                        "normalized",
+                        f"{len(normalized)} 项经Git换行/属性处理后与原提交相同，无需重复提交。",
+                    )
+                    counts = tuple(
+                        sorted(Counter(p.kind for p in plan.changes if p.relative in staged).items())
+                    )
                 # 未暂存改动包括外部编辑，不能与本任务的提交一起报告成功。
                 if (
                     git.run("diff", "--quiet", check=False).returncode
@@ -182,35 +213,49 @@ def run_task(request: TaskRequest, git: Git, emit: Callable[[TaskEvent], None]) 
                     raise SyncError("FOREIGN_WORKTREE", "检测到计划外或暂存后的改动，停止提交")
                 if git.head() != head:
                     raise SyncError("BASELINE_CHANGED", "提交前 Git HEAD 已变化")
-                phase("COMMITTING", "提交当前版本工程变更…")
-                git.run("commit", "-m", f"chore(source): 同步 {context.version_id} 真实工程源码")
-                commit = git.head()
-                committed = {
-                    os.fsdecode(p)
-                    for p in git.run(
-                        "diff-tree", "--no-commit-id", "--name-only", "--no-renames", "-r", "-z", head, commit
-                    ).stdout.split(b"\0")
-                    if p
-                }
-                if committed != set(paths):
-                    raise SyncError("COMMIT_SCOPE", "提交内容范围与计划不一致，请检查提交 hook；提交已保留")
-                for relative, expected_blob in expected_blobs.items():
-                    if git.text("rev-parse", commit + ":" + relative) != expected_blob:
+                if staged:
+                    phase("COMMITTING", "提交当前版本工程变更…")
+                    git.run("commit", "-m", f"chore(source): 同步 {context.version_id} 真实工程源码")
+                    commit = git.head()
+                    committed = {
+                        os.fsdecode(p)
+                        for p in git.run(
+                            "diff-tree",
+                            "--no-commit-id",
+                            "--name-only",
+                            "--no-renames",
+                            "-r",
+                            "-z",
+                            head,
+                            commit,
+                        ).stdout.split(b"\0")
+                        if p
+                    }
+                    if committed != staged:
                         raise SyncError(
-                            "COMMIT_CONTENT", "提交后内容与快照不一致，请检查提交 hook；提交已保留", relative
+                            "COMMIT_SCOPE", "提交内容范围与计划不一致，请检查提交 hook；提交已保留"
                         )
-                for item in plan.changes:
-                    if (
-                        item.kind == "delete"
-                        and git.run("cat-file", "-e", commit + ":" + item.relative, check=False).returncode
-                        == 0
-                    ):
-                        raise SyncError(
-                            "COMMIT_CONTENT",
-                            "计划删除的文件仍在提交内，请检查提交 hook；提交已保留",
-                            item.relative,
-                        )
-                event("committed", f"提交成功 {commit[:12]}", level="success")
+                    for relative, expected_blob in expected_blobs.items():
+                        if git.text("rev-parse", commit + ":" + relative) != expected_blob:
+                            raise SyncError(
+                                "COMMIT_CONTENT",
+                                "提交后内容与快照不一致，请检查提交 hook；提交已保留",
+                                relative,
+                            )
+                    for item in plan.changes:
+                        if (
+                            item.kind == "delete"
+                            and git.run(
+                                "cat-file", "-e", commit + ":" + item.relative, check=False
+                            ).returncode
+                            == 0
+                        ):
+                            raise SyncError(
+                                "COMMIT_CONTENT",
+                                "计划删除的文件仍在提交内，请检查提交 hook；提交已保留",
+                                item.relative,
+                            )
+                    event("committed", f"提交成功 {commit[:12]}", level="success")
         phase("PUSHING", "上传分支已有提交…")
         git.require_clean()
         git.run("push", settings.remote, f"HEAD:refs/heads/{settings.branch}")
